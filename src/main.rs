@@ -1,6 +1,5 @@
 mod gui;
 mod player;
-mod cli;
 mod utils;
 
 use anyhow::Result;
@@ -12,10 +11,6 @@ use utils::is_audio_file;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Run in CLI mode
-    #[arg(short, long)]
-    cli: bool,
-
     /// Path to music files or glob patterns (e.g., "*.mp3")
     #[arg(value_name = "FILES")]
     files: Vec<String>,
@@ -76,20 +71,5 @@ fn expand_glob_patterns(patterns: Vec<String>) -> Vec<PathBuf> {
 fn main() -> Result<()> {
     let args = Args::parse();
     let file_paths = expand_glob_patterns(args.files);
-
-    if args.cli {
-        if let Some(first_file) = file_paths.first() {
-            if let Some(path_str) = first_file.to_str() {
-                cli::run(Some(path_str.to_string()))?;
-            } else {
-                cli::run(None)?;
-            }
-        } else {
-            cli::run(None)?;
-        }
-    } else {
-        gui::run(file_paths)?;
-    }
-
-    Ok(())
+    gui::run(file_paths)
 }
