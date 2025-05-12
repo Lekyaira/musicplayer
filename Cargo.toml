@@ -1,0 +1,12 @@
+[package]
+name = "musicplayer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.31.1"  # GUI framework
+rodio = "0.20.1"   # Audio playback
+clap = { version = "4.5.38", features = ["derive"] }  # CLI argument parsing
+walkdir = "2.5.0"  # Directory traversal
+anyhow = "1.0.98"  # Error handling
+rfd = "0.15.3"     # File dialog
