@@ -1,11 +1,13 @@
 mod gui;
 mod player;
 mod cli;
+mod utils;
 
 use anyhow::Result;
 use clap::Parser;
 use glob::glob;
 use std::path::PathBuf;
+use utils::is_audio_file;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -26,26 +28,48 @@ fn expand_glob_patterns(patterns: Vec<String>) -> Vec<PathBuf> {
         // Check if it's a direct file path
         let path = PathBuf::from(&pattern);
         if path.is_file() {
-            files.push(path);
+            if is_audio_file(&path) {
+                files.push(path);
+            } else {
+                eprintln!("Skipping non-audio file: {}", pattern);
+            }
             continue;
         }
         
         // Try as a glob pattern
         match glob(&pattern) {
             Ok(entries) => {
+                let mut matched = false;
+                let mut audio_matched = false;
+                
                 for entry in entries {
                     if let Ok(path) = entry {
                         if path.is_file() {
-                            files.push(path);
+                            matched = true;
+                            if is_audio_file(&path) {
+                                audio_matched = true;
+                                files.push(path);
+                            } // Silently skip non-audio files from globs
                         }
                     }
                 }
+                
+                if !matched {
+                    eprintln!("No files matched pattern: {}", pattern);
+                } else if !audio_matched {
+                    eprintln!("Pattern '{}' matched files, but none were audio files", pattern);
+                }
             },
             Err(_) => {
-                // Ignore invalid patterns
                 eprintln!("Invalid pattern: {}", pattern);
             }
         }
+    }
+    
+    if files.is_empty() {
+        eprintln!("No audio files found in the provided patterns");
+    } else {
+        println!("Found {} audio files", files.len());
     }
     
     files

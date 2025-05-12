@@ -2054,6 +2054,7 @@ dependencies = [
  "clap",
  "eframe",
  "glob",
+ "lazy_static",
  "rfd",
  "rodio",
  "tempfile",

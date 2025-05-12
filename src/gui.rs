@@ -3,6 +3,7 @@ use eframe::{ egui, egui::ViewportBuilder, NativeOptions };
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use crate::player::MusicPlayer;
+use crate::utils::{is_audio_file, get_supported_extensions};
 
 struct MusicPlayerApp {
     player: Arc<Mutex<MusicPlayer>>,
@@ -20,7 +21,7 @@ impl MusicPlayerApp {
         let mut started_playing: bool = false;
         let mut playlist = Vec::new();
         
-        // Add all provided files to the playlist
+        // Add all provided files to the playlist (they should already be filtered)
         for path in paths {
             if path.is_file() {
                 // Use the first valid file as the initial file to play
@@ -78,18 +79,26 @@ impl MusicPlayerApp {
     }
     
     fn add_to_playlist(&mut self) {
+        let extensions = get_supported_extensions();
         if let Some(paths) = rfd::FileDialog::new()
-            .add_filter("Audio Files", &["mp3", "wav", "ogg", "flac"])
+            .add_filter("Audio Files", &extensions)
             .pick_files()
         {
+            let mut added = 0;
+            
             for path in paths {
-                self.playlist.push(path);
+                if is_audio_file(&path) {
+                    self.playlist.push(path);
+                    added += 1;
+                }
             }
             
-            // If no song is playing, start with the first added song
-            if self.current_playlist_index.is_none() && !self.playlist.is_empty() {
-                self.current_playlist_index = Some(0);
-                self.play_current_song();
+            if added > 0 {
+                // If no song is playing, start with the first added song
+                if self.current_playlist_index.is_none() && !self.playlist.is_empty() {
+                    self.current_playlist_index = Some(0);
+                    self.play_current_song();
+                }
             }
         }
     }
