@@ -15,17 +15,20 @@ struct MusicPlayerApp {
 }
 
 impl MusicPlayerApp {
-    fn new(cc: &eframe::CreationContext<'_>, path: Option<String>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, paths: Vec<PathBuf>) -> Self {
         let mut file: Option<PathBuf> = None;
         let mut started_playing: bool = false;
         let mut playlist = Vec::new();
         
-        if let Some(path) = path {
-            let path = PathBuf::from(path);
+        // Add all provided files to the playlist
+        for path in paths {
             if path.is_file() {
-                file = Some(path.clone());
+                // Use the first valid file as the initial file to play
+                if file.is_none() {
+                    file = Some(path.clone());
+                    started_playing = true;
+                }
                 playlist.push(path);
-                started_playing = true;
             }
         }
 
@@ -285,7 +288,7 @@ impl eframe::App for MusicPlayerApp {
     }
 }
 
-pub fn run(path: Option<String>) -> Result<()> {
+pub fn run(paths: Vec<PathBuf>) -> Result<()> {
     let options = NativeOptions {
         viewport: ViewportBuilder::default().with_inner_size(egui::vec2(500.0, 600.0)),
         ..Default::default()
@@ -294,7 +297,7 @@ pub fn run(path: Option<String>) -> Result<()> {
     if eframe::run_native(
         "Music Player",
         options,
-        Box::new(|cc| Ok(Box::new(MusicPlayerApp::new(cc, path)))),
+        Box::new(|cc| Ok(Box::new(MusicPlayerApp::new(cc, paths)))),
     ).is_err() {
         return Err(anyhow::anyhow!("Failed to run eframe"));
     }

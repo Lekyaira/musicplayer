@@ -2053,6 +2053,7 @@ dependencies = [
  "anyhow",
  "clap",
  "eframe",
+ "glob",
  "rfd",
  "rodio",
  "walkdir",

@@ -10,3 +10,4 @@ clap = { version = "4.5.38", features = ["derive"] }  # CLI argument parsing
 walkdir = "2.5.0"  # Directory traversal
 anyhow = "1.0.98"  # Error handling
 rfd = "0.15.3"     # File dialog
+glob = "0.3.2"     # Glob pattern matching

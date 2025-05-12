@@ -8,6 +8,7 @@ pub fn run(path: Option<String>) -> Result<()> {
     if let Some(path) = path {
         let path = PathBuf::from(path);
         if path.is_file() {
+            println!("Playing: {}", path.display());
             player.play_file(&path)?;
             // Keep the program running while the music plays
             std::thread::sleep(std::time::Duration::from_secs(1));
