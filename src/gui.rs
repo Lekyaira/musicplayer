@@ -16,7 +16,7 @@ struct MusicPlayerApp {
 }
 
 impl MusicPlayerApp {
-    fn new(cc: &eframe::CreationContext<'_>, paths: Vec<PathBuf>) -> Self {
+    fn new(_cc: &eframe::CreationContext<'_>, paths: Vec<PathBuf>) -> Self {
         let mut file: Option<PathBuf> = None;
         let mut started_playing: bool = false;
         let mut playlist = Vec::new();
@@ -116,11 +116,11 @@ impl MusicPlayerApp {
                 
                 // Update current playlist index if needed
                 if let Some(current) = self.current_playlist_index {
-                    if index < current {
-                        self.current_playlist_index = Some(current - 1);
-                    } else if index == current && current == self.playlist.len() - 1 {
-                        self.current_playlist_index = if current > 0 { Some(current - 1) } else { None };
-                    }
+                    self.current_playlist_index = match current {
+                        c if c == index => Some(c - 1),
+                        c if c == index - 1 => Some(c + 1),
+                        c => Some(c),
+                    };
                 }
                 
                 self.playlist.remove(index);
@@ -135,11 +135,11 @@ impl MusicPlayerApp {
                 self.playlist.swap(index, index - 1);
                 // Update current index if it was one of the swapped items
                 if let Some(current) = self.current_playlist_index {
-                    if current == index {
-                        self.current_playlist_index = Some(current - 1);
-                    } else if current == index - 1 {
-                        self.current_playlist_index = Some(current + 1);
-                    }
+                    self.current_playlist_index = match current {
+                        c if c == index => Some(c - 1),
+                        c if c == index - 1 => Some(c + 1),
+                        c => Some(c),
+                    };
                 }
                 self.selected_song_index = Some(index - 1);
             }
@@ -152,11 +152,11 @@ impl MusicPlayerApp {
                 self.playlist.swap(index, index + 1);
                 // Update current index if it was one of the swapped items
                 if let Some(current) = self.current_playlist_index {
-                    if current == index {
-                        self.current_playlist_index = Some(current + 1);
-                    } else if current == index + 1 {
-                        self.current_playlist_index = Some(current - 1);
-                    }
+                    self.current_playlist_index = match current {
+                        c if c == index => Some(c + 1),
+                        c if c == index + 1 => Some(c - 1),
+                        c => Some(c),
+                    };
                 }
                 self.selected_song_index = Some(index + 1);
             }
@@ -211,7 +211,7 @@ impl eframe::App for MusicPlayerApp {
                         self.add_to_playlist();
                     }
                     
-                    if let Some(index) = self.selected_song_index {
+                    if let Some(_index) = self.selected_song_index {
                         if ui.button("Remove").clicked() {
                             self.remove_from_playlist();
                         }
@@ -290,12 +290,10 @@ impl eframe::App for MusicPlayerApp {
                                     self.is_playing = false;
                                 }
                             }
-                        } else if let Some(_) = self.current_playlist_index {
-                            if ui.button("▶ Play").clicked() {
-                                if let Ok(player) = self.player.lock() {
-                                    player.resume();
-                                    self.is_playing = true;
-                                }
+                        } else if self.current_playlist_index.is_some() && ui.button("▶ Play").clicked() {
+                            if let Ok(player) = self.player.lock() {
+                                player.resume();
+                                self.is_playing = true;
                             }
                         }
                         

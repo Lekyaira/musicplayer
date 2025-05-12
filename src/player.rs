@@ -2,9 +2,8 @@ use anyhow::Result;
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 pub struct MusicPlayer {
     sink: Sink,
@@ -85,6 +84,7 @@ impl MusicPlayer {
         song_completed
     }
     
+    #[allow(dead_code)]
     pub fn get_current_song_index(&self) -> Option<usize> {
         if let Ok(guard) = self.current_song_index.lock() {
             *guard
@@ -134,12 +134,13 @@ impl MusicPlayer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    use std::path::PathBuf;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
     
     // Helper function to create a temporary audio file for testing
+    #[allow(dead_code)]
     fn create_test_file() -> Result<PathBuf> {
         let dir = tempdir()?;
         let file_path = dir.path().join("test.wav");

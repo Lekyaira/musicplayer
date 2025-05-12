@@ -10,7 +10,7 @@ fn test_mutex_thread_safety() -> Result<()> {
     
     // Clone for thread
     let counter_clone = Arc::clone(&counter);
-    let finished_clone = Arc::clone(&finished);
+    let _finished_clone = Arc::clone(&finished);
     
     // Spawn a thread that increments the counter
     let handle = thread::spawn(move || -> Result<()> {

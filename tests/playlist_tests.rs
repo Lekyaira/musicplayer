@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-
+use std::cmp::Ordering;
 // Mock implementation to test playlist management without GUI dependencies
 struct PlaylistManager {
     playlist: Vec<PathBuf>,
@@ -29,20 +29,23 @@ impl PlaylistManager {
         
         // Update current index if needed
         if let Some(current) = self.current_index {
-            if index == current {
-                // If removing current item, move to next or previous
-                if self.playlist.len() > 1 {
-                    if index == self.playlist.len() - 1 {
-                        self.current_index = Some(index - 1);
-                    }
-                    // Otherwise current index stays the same but will point to the next item
-                } else {
-                    // If removing the only item
-                    self.current_index = None;
+            match index.cmp(&current) {
+                Ordering::Equal => {
+                    // If removing current item, move to next or previous
+                    self.current_index = match self.playlist.len() {
+                        1 => None, // If removing the only item
+                        _ if index == self.playlist.len() - 1 => Some(index - 1), // If removing last item, move to previous
+                        _ => Some(current), // Otherwise current index stays the same but will point to the next item
+                    };
                 }
-            } else if index < current {
-                // If removing an item before current, decrement current index
-                self.current_index = Some(current - 1);
+                Ordering::Less => {
+                    // If removing an item before current, decrement current index
+                    self.current_index = Some(current - 1);
+                }
+                Ordering::Greater => {
+                    // If removing an item after current, current index stays the same
+                    self.current_index = Some(current);
+                }
             }
         }
         
@@ -60,11 +63,11 @@ impl PlaylistManager {
         
         // Update current index if affected
         if let Some(current) = self.current_index {
-            if current == index {
-                self.current_index = Some(current - 1);
-            } else if current == index - 1 {
-                self.current_index = Some(current + 1);
-            }
+            self.current_index = match current {
+                c if c == index => Some(c - 1),
+                c if c == index - 1 => Some(c + 1),
+                c => Some(c),
+            };
         }
         
         true
@@ -80,11 +83,11 @@ impl PlaylistManager {
         
         // Update current index if affected
         if let Some(current) = self.current_index {
-            if current == index {
-                self.current_index = Some(current + 1);
-            } else if current == index + 1 {
-                self.current_index = Some(current - 1);
-            }
+            self.current_index = match current {
+                c if c == index => Some(c + 1),
+                c if c == index + 1 => Some(c - 1),
+                c => Some(c),
+            };
         }
         
         true
@@ -95,16 +98,10 @@ impl PlaylistManager {
             return None;
         }
         
-        let next_index = if let Some(current) = self.current_index {
-            if current + 1 < self.playlist.len() {
-                Some(current + 1)
-            } else {
-                None // End of playlist
-            }
-        } else if !self.playlist.is_empty() {
-            Some(0) // Start of playlist
-        } else {
-            None // Empty playlist
+        let next_index = match self.current_index {
+            Some(current) if current + 1 < self.playlist.len() => Some(current + 1),
+            None if !self.playlist.is_empty() => Some(0), // Start of playlist
+            _ => None, // End of playlist or empty playlist
         };
         
         self.current_index = next_index;

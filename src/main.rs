@@ -42,15 +42,13 @@ fn expand_glob_patterns(patterns: Vec<String>) -> Vec<PathBuf> {
                 let mut matched = false;
                 let mut audio_matched = false;
                 
-                for entry in entries {
-                    if let Ok(path) = entry {
-                        if path.is_file() {
-                            matched = true;
-                            if is_audio_file(&path) {
-                                audio_matched = true;
-                                files.push(path);
-                            } // Silently skip non-audio files from globs
-                        }
+                for path in entries.flatten() {
+                    if path.is_file() {
+                        matched = true;
+                        if is_audio_file(&path) {
+                            audio_matched = true;
+                            files.push(path);
+                        } // Silently skip non-audio files from globs
                     }
                 }
                 

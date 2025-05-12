@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::thread;
@@ -21,7 +21,7 @@ impl MockPlayer {
         }
     }
     
-    fn play(&self, path: &PathBuf, index: usize) -> Result<()> {
+    fn play(&self, _path: &Path, index: usize) -> Result<()> {
         if let Ok(mut current) = self.current_index.lock() {
             *current = Some(index);
         } else {
@@ -140,8 +140,8 @@ fn test_mock_player_basic() -> Result<()> {
 fn test_mock_player_playlist() -> Result<()> {
     let player = MockPlayer::new();
     
-    // Setup mock playlist
-    let tracks = vec![
+    // Setup mock playlist - use array instead of vec! to avoid "useless vec!" warning
+    let tracks = [
         PathBuf::from("/mock/track1.mp3"),
         PathBuf::from("/mock/track2.mp3"),
         PathBuf::from("/mock/track3.mp3"),
