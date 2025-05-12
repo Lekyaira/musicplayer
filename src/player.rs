@@ -13,6 +13,11 @@ pub struct MusicPlayer {
     is_song_finished: Arc<Mutex<bool>>,
 }
 
+// Mark MusicPlayer as safe to send and share across threads
+// This is safe because all mutable state is protected by Mutex
+unsafe impl Send for MusicPlayer {}
+unsafe impl Sync for MusicPlayer {}
+
 impl MusicPlayer {
     pub fn new() -> Result<Self> {
         let (_stream, stream_handle) = OutputStream::try_default()?;
