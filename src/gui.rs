@@ -2,6 +2,7 @@ use anyhow::Result;
 use eframe::{ egui, egui::ViewportBuilder, NativeOptions };
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use crate::player::MusicPlayer;
 use crate::utils::{is_audio_file, get_supported_extensions};
 
@@ -14,6 +15,10 @@ struct MusicPlayerApp {
     selected_song_index: Option<usize>,
     is_playing: bool,
     volume: f32,
+    song_position: Duration,
+    song_duration: Option<Duration>,
+    seeking: bool,
+    seek_position: f32, // 0.0 to 1.0 for slider
 }
 
 impl MusicPlayerApp {
@@ -43,6 +48,10 @@ impl MusicPlayerApp {
             selected_song_index: None,
             is_playing: false,
             volume: 1.0,
+            song_position: Duration::from_secs(0),
+            song_duration: None,
+            seeking: false,
+            seek_position: 0.0,
         }
     }
     
@@ -185,6 +194,39 @@ impl MusicPlayerApp {
             player.set_volume(volume);
         }
     }
+    
+    fn update_song_position(&mut self) {
+        if self.is_playing && !self.seeking {
+            if let Ok(player) = self.player.lock() {
+                self.song_position = player.get_current_position();
+                
+                // Update song duration if not set yet
+                if self.song_duration.is_none() {
+                    self.song_duration = player.get_song_duration();
+                }
+            }
+        }
+    }
+    
+    fn format_duration(duration: Duration) -> String {
+        let total_seconds = duration.as_secs();
+        let minutes = total_seconds / 60;
+        let seconds = total_seconds % 60;
+        format!("{:02}:{:02}", minutes, seconds)
+    }
+    
+    fn seek_to_position(&mut self, position_ratio: f32) {
+        if let Some(duration) = self.song_duration {
+            let position = Duration::from_secs_f32(position_ratio * duration.as_secs_f32());
+            self.song_position = position;
+            
+            if let Ok(player) = self.player.lock() {
+                if let Err(e) = player.seek_to(position) {
+                    eprintln!("Error seeking: {}", e);
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for MusicPlayerApp {
@@ -198,15 +240,22 @@ impl eframe::App for MusicPlayerApp {
                     }
                     let _ = player.play_playlist_item(path, self.current_playlist_index.unwrap());
                     self.is_playing = true;
+                    
+                    // Reset position tracking
+                    self.song_position = Duration::from_secs(0);
+                    self.song_duration = player.get_song_duration();
                 }
             }
         }
+        
+        // Update song position
+        self.update_song_position();
         
         // Check if current song has finished and we need to play the next one
         self.check_song_finished();
         
         // Request continuous repaint for checking song status
-        ctx.request_repaint_after(std::time::Duration::from_millis(500));
+        ctx.request_repaint_after(std::time::Duration::from_millis(100));
         
         egui::CentralPanel::default().show(ctx, |ui| {
             // Use vertical layout to allow proper resizing
@@ -289,6 +338,53 @@ impl eframe::App for MusicPlayerApp {
                             .and_then(|n| n.to_str())
                             .unwrap_or("Unknown")));
                     }
+                    
+                    // Progress bar and time display
+                    ui.horizontal(|ui| {
+                        // Current position display
+                        ui.label(Self::format_duration(self.song_position));
+                        
+                        // Progress slider
+                        let progress_ratio = if let Some(duration) = self.song_duration {
+                            if duration.as_secs() > 0 {
+                                self.song_position.as_secs_f32() / duration.as_secs_f32()
+                            } else {
+                                0.0
+                            }
+                        } else {
+                            0.0
+                        };
+                        
+                        let mut seek_pos = if self.seeking {
+                            self.seek_position
+                        } else {
+                            progress_ratio
+                        };
+                        
+                        let slider_response = ui.add(
+                            egui::Slider::new(&mut seek_pos, 0.0..=1.0)
+                                .show_value(false)
+                                .trailing_fill(true)
+                        );
+                        
+                        // Handle seeking
+                        if slider_response.drag_started() {
+                            self.seeking = true;
+                            self.seek_position = seek_pos;
+                        } else if slider_response.drag_stopped() {
+                            self.seeking = false;
+                            self.seek_to_position(seek_pos);
+                        } else if slider_response.dragged() {
+                            self.seek_position = seek_pos;
+                        }
+                        
+                        // Total duration display
+                        if let Some(duration) = self.song_duration {
+                            ui.label(Self::format_duration(duration));
+                        } else {
+                            ui.label("--:--");
+                        }
+                    });
                     
                     // Playback controls
                     ui.horizontal(|ui| {

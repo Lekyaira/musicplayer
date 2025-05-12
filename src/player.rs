@@ -1,9 +1,10 @@
 use anyhow::Result;
-use rodio::{Decoder, OutputStream, Sink};
+use rodio::{Decoder, OutputStream, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 pub struct MusicPlayer {
     sink: Sink,
@@ -11,6 +12,10 @@ pub struct MusicPlayer {
     _stream_handle: rodio::OutputStreamHandle,
     current_song_index: Arc<Mutex<Option<usize>>>,
     is_song_finished: Arc<Mutex<bool>>,
+    current_file_path: Arc<Mutex<Option<PathBuf>>>,
+    song_duration: Arc<Mutex<Option<Duration>>>,
+    play_position: Arc<Mutex<Duration>>,
+    last_position_update: Arc<Mutex<std::time::Instant>>,
 }
 
 // Mark MusicPlayer as safe to send and share across threads
@@ -29,17 +34,42 @@ impl MusicPlayer {
             _stream_handle: stream_handle,
             current_song_index: Arc::new(Mutex::new(None)),
             is_song_finished: Arc::new(Mutex::new(false)),
+            current_file_path: Arc::new(Mutex::new(None)),
+            song_duration: Arc::new(Mutex::new(None)),
+            play_position: Arc::new(Mutex::new(Duration::from_secs(0))),
+            last_position_update: Arc::new(Mutex::new(std::time::Instant::now())),
         })
     }
 
     pub fn play_file(&self, path: &Path) -> Result<()> {
         self.sink.stop();
         
+        // Store the current file path
+        if let Ok(mut file_path) = self.current_file_path.lock() {
+            *file_path = Some(path.to_path_buf());
+        }
+        
+        // Reset position tracking
+        if let Ok(mut position) = self.play_position.lock() {
+            *position = Duration::from_secs(0);
+        }
+        if let Ok(mut last_update) = self.last_position_update.lock() {
+            *last_update = std::time::Instant::now();
+        }
+        
+        // Open the file and get its duration
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-        let decoder = Decoder::new(reader)?;
+        let source = Decoder::new(reader)?;
         
-        self.sink.append(decoder);
+        // Store the song duration if available
+        let duration = source.total_duration();
+        if let Ok(mut song_duration) = self.song_duration.lock() {
+            *song_duration = duration;
+        }
+        
+        // Play the file
+        self.sink.append(source);
         self.sink.play();
         
         Ok(())
@@ -144,6 +174,91 @@ impl MusicPlayer {
     
     pub fn get_volume(&self) -> f32 {
         self.sink.volume()
+    }
+
+    // Progress tracking methods
+    pub fn get_song_duration(&self) -> Option<Duration> {
+        if let Ok(duration) = self.song_duration.lock() {
+            *duration
+        } else {
+            None
+        }
+    }
+    
+    pub fn get_current_position(&self) -> Duration {
+        // If paused, return the stored position
+        if self.sink.is_paused() {
+            if let Ok(position) = self.play_position.lock() {
+                return *position;
+            }
+        }
+        
+        // If playing, calculate the current position based on elapsed time
+        if let (Ok(mut position), Ok(mut last_update)) = (self.play_position.lock(), self.last_position_update.lock()) {
+            if !self.sink.is_paused() && !self.sink.empty() {
+                let now = std::time::Instant::now();
+                let elapsed = now.duration_since(*last_update);
+                *position += elapsed;
+                *last_update = now;
+            }
+            return *position;
+        }
+        
+        Duration::from_secs(0)
+    }
+    
+    pub fn seek_to(&self, position: Duration) -> Result<()> {
+        // Get the current file path
+        let file_path = if let Ok(path) = self.current_file_path.lock() {
+            match &*path {
+                Some(p) => p.clone(),
+                None => return Err(anyhow::anyhow!("No file is currently playing")),
+            }
+        } else {
+            return Err(anyhow::anyhow!("Failed to lock file path mutex"));
+        };
+        
+        // Get the current song index
+        let _song_index = if let Ok(index) = self.current_song_index.lock() {
+            match *index {
+                Some(i) => i,
+                None => return Err(anyhow::anyhow!("No song index is set")),
+            }
+        } else {
+            return Err(anyhow::anyhow!("Failed to lock song index mutex"));
+        };
+        
+        // Store the seek position
+        if let Ok(mut play_pos) = self.play_position.lock() {
+            *play_pos = position;
+        } else {
+            return Err(anyhow::anyhow!("Failed to lock position mutex"));
+        }
+        
+        // Reset the last update time
+        if let Ok(mut last_update) = self.last_position_update.lock() {
+            *last_update = std::time::Instant::now();
+        }
+        
+        // We need to restart playback from the new position
+        // Unfortunately, rodio doesn't support direct seeking, so we need to reload the file
+        // and skip to the desired position
+        let was_paused = self.sink.is_paused();
+        
+        self.sink.stop();
+        
+        let file = File::open(&file_path)?;
+        let reader = BufReader::new(file);
+        let source = Decoder::new(reader)?
+            .skip_duration(position);
+        
+        self.sink.append(source);
+        
+        if !was_paused {
+            self.sink.play();
+        }
+        
+        Ok(())
     }
 }
 
