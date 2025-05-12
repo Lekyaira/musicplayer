@@ -134,6 +134,17 @@ impl MusicPlayer {
         // We're playing only if not paused, not empty, and not finished
         !paused && !empty && !finished
     }
+
+    // Volume control methods
+    pub fn set_volume(&self, volume: f32) {
+        // Clamp volume between 0.0 and 1.0
+        let volume = volume.max(0.0).min(1.0);
+        self.sink.set_volume(volume);
+    }
+    
+    pub fn get_volume(&self) -> f32 {
+        self.sink.volume()
+    }
 }
 
 #[cfg(test)]

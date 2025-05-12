@@ -13,6 +13,7 @@ struct MusicPlayerApp {
     current_playlist_index: Option<usize>,
     selected_song_index: Option<usize>,
     is_playing: bool,
+    volume: f32,
 }
 
 impl MusicPlayerApp {
@@ -41,6 +42,7 @@ impl MusicPlayerApp {
             current_playlist_index: None,
             selected_song_index: None,
             is_playing: false,
+            volume: 1.0,
         }
     }
     
@@ -176,6 +178,13 @@ impl MusicPlayerApp {
             }
         }
     }
+    
+    fn set_volume(&mut self, volume: f32) {
+        self.volume = volume;
+        if let Ok(player) = self.player.lock() {
+            player.set_volume(volume);
+        }
+    }
 }
 
 impl eframe::App for MusicPlayerApp {
@@ -307,6 +316,17 @@ impl eframe::App for MusicPlayerApp {
                         if ui.button("⏭ Next").clicked() {
                             self.play_next_song();
                         }
+                        
+                        // Add volume slider
+                        ui.add_space(20.0);
+                        ui.label("Volume:");
+                        let mut volume = self.volume;
+                        if ui.add(egui::Slider::new(&mut volume, 0.0..=1.0).show_value(false)).changed() {
+                            self.set_volume(volume);
+                        }
+                        
+                        // Show volume percentage
+                        ui.label(format!("{}%", (volume * 100.0).round() as i32));
                     });
                 });
             });
