@@ -191,99 +191,118 @@ impl eframe::App for MusicPlayerApp {
         ctx.request_repaint_after(std::time::Duration::from_millis(500));
         
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Music Player");
-            
-            ui.horizontal(|ui| {
-                if ui.button("Add Songs").clicked() {
-                    self.add_to_playlist();
-                }
+            // Use vertical layout to allow proper resizing
+            ui.vertical(|ui| {
+                // Top header section - fixed height
+                ui.heading("Music Player");
                 
-                if let Some(index) = self.selected_song_index {
-                    if ui.button("Remove").clicked() {
-                        self.remove_from_playlist();
+                // Playlist management buttons - fixed height
+                ui.horizontal(|ui| {
+                    if ui.button("Add Songs").clicked() {
+                        self.add_to_playlist();
                     }
                     
-                    if ui.button("Move Up").clicked() {
-                        self.move_up_in_playlist();
+                    if let Some(index) = self.selected_song_index {
+                        if ui.button("Remove").clicked() {
+                            self.remove_from_playlist();
+                        }
+                        
+                        if ui.button("Move Up").clicked() {
+                            self.move_up_in_playlist();
+                        }
+                        
+                        if ui.button("Move Down").clicked() {
+                            self.move_down_in_playlist();
+                        }
                     }
-                    
-                    if ui.button("Move Down").clicked() {
-                        self.move_down_in_playlist();
-                    }
-                }
-            });
-            
-            ui.separator();
-            
-            // Display playlist
-            let playlist_ui = egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.heading("Playlist");
+                });
                 
-                for (index, path) in self.playlist.iter().enumerate() {
-                    let is_selected = Some(index) == self.selected_song_index;
-                    let is_playing = Some(index) == self.current_playlist_index && self.is_playing;
+                ui.separator();
+                
+                // Calculate available space for playlist
+                // This is the key part - allocate remaining space between fixed elements
+                let available_height = ui.available_height();
+                // Reserve space for playback controls and now playing label at bottom
+                let bottom_section_height = 70.0;
+                let playlist_height = available_height - bottom_section_height;
+                
+                // Playlist section - takes up remaining space with scroll
+                ui.allocate_ui(egui::vec2(ui.available_width(), playlist_height), |ui| {
+                    ui.heading("Playlist");
                     
-                    let text = format!("{}. {}", index + 1, path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("Unknown"));
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .max_height(playlist_height - 30.0) // Account for playlist header
+                        .show(ui, |ui| {
+                            for (index, path) in self.playlist.iter().enumerate() {
+                                let is_selected = Some(index) == self.selected_song_index;
+                                let is_playing = Some(index) == self.current_playlist_index && self.is_playing;
+                                
+                                let text = format!("{}. {}", index + 1, path.file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("Unknown"));
+                                
+                                let response = ui.selectable_label(is_selected, if is_playing {
+                                    format!("▶ {}", text)
+                                } else {
+                                    text
+                                });
+                                
+                                if response.clicked() {
+                                    self.selected_song_index = Some(index);
+                                }
+                                
+                                if response.double_clicked() {
+                                    self.current_playlist_index = Some(index);
+                                    self.started_playing = true;
+                                    self.current_file = Some(path.clone());
+                                }
+                            }
+                        });
+                });
+                
+                ui.separator();
+                
+                // Bottom controls section - fixed height, always visible
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    // Now playing display
+                    if let Some(path) = &self.current_file {
+                        ui.label(format!("Now playing: {}", path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("Unknown")));
+                    }
                     
-                    let response = ui.selectable_label(is_selected, if is_playing {
-                        format!("▶ {}", text)
-                    } else {
-                        text
+                    // Playback controls
+                    ui.horizontal(|ui| {
+                        if self.is_playing {
+                            if ui.button("⏸ Pause").clicked() {
+                                if let Ok(player) = self.player.lock() {
+                                    player.pause();
+                                    self.is_playing = false;
+                                }
+                            }
+                        } else if let Some(_) = self.current_playlist_index {
+                            if ui.button("▶ Play").clicked() {
+                                if let Ok(player) = self.player.lock() {
+                                    player.resume();
+                                    self.is_playing = true;
+                                }
+                            }
+                        }
+                        
+                        if ui.button("⏹ Stop").clicked() {
+                            if let Ok(player) = self.player.lock() {
+                                player.stop();
+                                self.is_playing = false;
+                            }
+                        }
+                        
+                        if ui.button("⏭ Next").clicked() {
+                            self.play_next_song();
+                        }
                     });
-                    
-                    if response.clicked() {
-                        self.selected_song_index = Some(index);
-                    }
-                    
-                    if response.double_clicked() {
-                        self.current_playlist_index = Some(index);
-                        // We need to defer the playback to after the UI update
-                        // to avoid the borrow checker error
-                        self.started_playing = true;
-                        self.current_file = Some(path.clone());
-                    }
-                }
+                });
             });
-            
-            ui.separator();
-
-            // Playback controls
-            ui.horizontal(|ui| {
-                if self.is_playing {
-                    if ui.button("⏸ Pause").clicked() {
-                        if let Ok(player) = self.player.lock() {
-                            player.pause();
-                            self.is_playing = false;
-                        }
-                    }
-                } else if let Some(_) = self.current_playlist_index {
-                    if ui.button("▶ Play").clicked() {
-                        if let Ok(player) = self.player.lock() {
-                            player.resume();
-                            self.is_playing = true;
-                        }
-                    }
-                }
-                
-                if ui.button("⏹ Stop").clicked() {
-                    if let Ok(player) = self.player.lock() {
-                        player.stop();
-                        self.is_playing = false;
-                    }
-                }
-                
-                if ui.button("⏭ Next").clicked() {
-                    self.play_next_song();
-                }
-            });
-            
-            if let Some(path) = &self.current_file {
-                ui.label(format!("Now playing: {}", path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("Unknown")));
-            }
         });
     }
 }
