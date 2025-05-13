@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Music Player
+Comment=Play your music files
+Exec=musicplayer %F
+Icon=audio-player
+Terminal=false
+Categories=AudioVideo;Audio;Player;Music;
+MimeType=audio/mpeg;audio/mp3;audio/ogg;audio/flac;audio/wav;audio/aac;application/ogg;audio/x-mp3;audio/x-mpeg;
+Keywords=Music;Audio;Player;MP3;OGG;FLAC;WAV;
+StartupNotify=true 

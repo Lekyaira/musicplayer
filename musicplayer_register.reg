@@ -1,0 +1,36 @@
+Windows Registry Editor Version 5.00
+
+; File association for Music Player
+
+; Create application identifier
+[HKEY_CURRENT_USER\Software\Classes\Applications\musicplayer.exe]
+@="Music Player"
+
+; Set open command
+[HKEY_CURRENT_USER\Software\Classes\Applications\musicplayer.exe\shell\open\command]
+@="\"C:\\Program Files\\MusicPlayer\\musicplayer.exe\" \"%1\""
+
+; Associate with audio files
+; MP3
+[HKEY_CURRENT_USER\Software\Classes\.mp3\OpenWithProgids]
+"Applications.musicplayer.exe"=""
+
+; WAV
+[HKEY_CURRENT_USER\Software\Classes\.wav\OpenWithProgids]
+"Applications.musicplayer.exe"=""
+
+; OGG
+[HKEY_CURRENT_USER\Software\Classes\.ogg\OpenWithProgids]
+"Applications.musicplayer.exe"=""
+
+; FLAC
+[HKEY_CURRENT_USER\Software\Classes\.flac\OpenWithProgids]
+"Applications.musicplayer.exe"=""
+
+; AAC
+[HKEY_CURRENT_USER\Software\Classes\.aac\OpenWithProgids]
+"Applications.musicplayer.exe"=""
+
+; M4A
+[HKEY_CURRENT_USER\Software\Classes\.m4a\OpenWithProgids]
+"Applications.musicplayer.exe"="" 

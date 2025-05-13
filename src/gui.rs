@@ -21,6 +21,7 @@ struct MusicPlayerApp {
     seeking: bool,
     seek_position: f32, // 0.0 to 1.0 for slider
     shuffle_mode: bool,
+    pending_drops: Vec<PathBuf>, // Store files that were dropped
 }
 
 impl MusicPlayerApp {
@@ -55,6 +56,7 @@ impl MusicPlayerApp {
             seeking: false,
             seek_position: 0.0,
             shuffle_mode: false,
+            pending_drops: Vec::new(),
         }
     }
     
@@ -276,10 +278,50 @@ impl MusicPlayerApp {
             }
         }
     }
+    
+    // Method to handle files dropped by the user or from the OS
+    fn handle_dropped_files(&mut self, ctx: &egui::Context) {
+        // First check for dropped files
+        if !ctx.input(|i| i.raw.dropped_files.is_empty()) {
+            let mut new_files = Vec::new();
+            
+            // Extract valid audio files from the dropped files
+            ctx.input(|i| {
+                for file in &i.raw.dropped_files {
+                    if let Some(path) = &file.path {
+                        if is_audio_file(path) {
+                            new_files.push(path.clone());
+                            // Store these files to process later
+                            self.pending_drops.push(path.clone());
+                        }
+                    }
+                }
+            });
+            
+            // Process the dropped files if any found
+            if !new_files.is_empty() {
+                let was_empty = self.playlist.is_empty();
+                
+                // Add files to the playlist
+                for path in new_files {
+                    self.playlist.push(path);
+                }
+                
+                // If playlist was empty before, start playing the first added file
+                if was_empty && !self.playlist.is_empty() {
+                    self.current_playlist_index = Some(0);
+                    self.play_current_song();
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for MusicPlayerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Handle files dropped onto the application
+        self.handle_dropped_files(ctx);
+        
         if self.started_playing {
             self.started_playing = false;
             if let Some(path) = &self.current_file {
@@ -485,16 +527,22 @@ impl eframe::App for MusicPlayerApp {
     }
 }
 
-pub fn run(paths: Vec<PathBuf>) -> Result<()> {
-    let options = NativeOptions {
-        viewport: ViewportBuilder::default().with_inner_size(egui::vec2(500.0, 600.0)),
+pub fn run(paths: Vec<PathBuf>, opened_with_files: bool) -> Result<()> {
+    let mut options = NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_inner_size(egui::vec2(500.0, 600.0))
+            .with_drag_and_drop(true), // Enable drag-drop file support
         ..Default::default()
     };
     
     if eframe::run_native(
         "Music Player",
         options,
-        Box::new(|cc| Ok(Box::new(MusicPlayerApp::new(cc, paths)))),
+        Box::new(|cc| {
+            // Enable handling dropped files
+            cc.egui_ctx.set_visuals(egui::Visuals::dark());
+            Ok(Box::new(MusicPlayerApp::new(cc, paths)))
+        }),
     ).is_err() {
         return Err(anyhow::anyhow!("Failed to run eframe"));
     }
