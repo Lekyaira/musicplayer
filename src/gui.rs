@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::player::MusicPlayer;
 use crate::utils::{ is_audio_file, get_supported_extensions};
 use rand::{ rng, Rng };
+use crate::config::{Config, load_config, save_config};
 
 struct MusicPlayerApp {
     player: Arc<Mutex<MusicPlayer>>,
@@ -22,6 +23,8 @@ struct MusicPlayerApp {
     seek_position: f32, // 0.0 to 1.0 for slider
     shuffle_mode: bool,
     pending_drops: Vec<PathBuf>, // Store files that were dropped
+    config: Config,
+    notification: Option<(String, std::time::Instant)>, // (message, time shown)
 }
 
 impl MusicPlayerApp {
@@ -29,6 +32,9 @@ impl MusicPlayerApp {
         let mut file: Option<PathBuf> = None;
         let mut started_playing: bool = false;
         let mut playlist = Vec::new();
+        
+        // Load the config from disk
+        let config = load_config().unwrap_or_default();
         
         // Add all provided files to the playlist (they should already be filtered)
         for path in paths {
@@ -50,13 +56,15 @@ impl MusicPlayerApp {
             current_playlist_index: None,
             selected_song_index: None,
             is_playing: false,
-            volume: 0.5,
+            volume: config.volume,  // Use volume from config
             song_position: Duration::from_secs(0),
             song_duration: None,
             seeking: false,
             seek_position: 0.0,
             shuffle_mode: false,
             pending_drops: Vec::new(),
+            config,
+            notification: None,
         }
     }
     
@@ -241,8 +249,15 @@ impl MusicPlayerApp {
     
     fn set_volume(&mut self, volume: f32) {
         self.volume = volume;
+        self.config.volume = volume;  // Update config with new volume
+        
         if let Ok(player) = self.player.lock() {
             player.set_volume(volume);
+        }
+        
+        // Save config when volume changes
+        if let Err(e) = save_config(&self.config) {
+            log::error!("Failed to save config: {}", e);
         }
     }
     
@@ -315,6 +330,11 @@ impl MusicPlayerApp {
             }
         }
     }
+
+    // Add a method to show notifications
+    fn show_notification(&mut self, message: &str) {
+        self.notification = Some((message.to_string(), std::time::Instant::now()));
+    }
 }
 
 impl eframe::App for MusicPlayerApp {
@@ -348,11 +368,44 @@ impl eframe::App for MusicPlayerApp {
         // Request continuous repaint for checking song status
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
         
+        // Check and update notification state
+        if let Some((message, time)) = &self.notification {
+            // Show notification for 3 seconds
+            if time.elapsed() < std::time::Duration::from_secs(3) {
+                // Display notification at the top of the screen
+                egui::TopBottomPanel::top("notification_panel")
+                    .show_animated(ctx, true, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(4.0);
+                            ui.label(egui::RichText::new(message).strong());
+                            ui.add_space(4.0);
+                        });
+                    });
+            } else {
+                // Clear notification after timeout
+                self.notification = None;
+            }
+        }
+        
         egui::CentralPanel::default().show(ctx, |ui| {
             // Use vertical layout to allow proper resizing
             ui.vertical(|ui| {
-                // Top header section - fixed height
-                ui.heading("Music Player");
+                // Top section with title and config button
+                ui.horizontal(|ui| {
+                    ui.heading("Music Player");
+                    
+                    // Push config button to the right
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        // Config button with just the gear icon
+                        let config_btn = ui.button("⚙").on_hover_text("Show config file location");
+                        if config_btn.clicked() {
+                            let location = crate::config::get_config_location_description();
+                            ui.output_mut(|o| o.copied_text = location.clone());
+                            self.show_notification("Config location copied to clipboard!");
+                            log::info!("{}", location);
+                        }
+                    });
+                });
                 
                 // Playlist management buttons - fixed height
                 ui.horizontal(|ui| {

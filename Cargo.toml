@@ -14,6 +14,9 @@ glob = "0.3.2"     # Glob pattern matching
 lazy_static = "1.5.0"  # Lazy static initialization
 log = "0.4.27"
 rand = "0.9.1"     # Random number generation
+serde = { version = "1.0", features = ["derive"] }  # Serialization
+toml = "0.8.22"     # TOML parsing/writing
+directories = "6.0.0"  # OS-specific directories
 
 [dev-dependencies]
 tempfile = "3.20.0"  # Temporary files for testing

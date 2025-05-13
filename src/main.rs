@@ -1,6 +1,7 @@
 mod gui;
 mod player;
 mod utils;
+mod config;
 
 use anyhow::Result;
 use clap::Parser;
