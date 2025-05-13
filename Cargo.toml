@@ -12,6 +12,7 @@ anyhow = "1.0.98"  # Error handling
 rfd = "0.15.3"     # File dialog
 glob = "0.3.2"     # Glob pattern matching
 lazy_static = "1.5.0"  # Lazy static initialization
+log = "0.4.27"
 
 [dev-dependencies]
 tempfile = "3.20.0"  # Temporary files for testing

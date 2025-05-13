@@ -47,7 +47,7 @@ impl MusicPlayerApp {
             current_playlist_index: None,
             selected_song_index: None,
             is_playing: false,
-            volume: 1.0,
+            volume: 0.5,
             song_position: Duration::from_secs(0),
             song_duration: None,
             seeking: false,

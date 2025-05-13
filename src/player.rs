@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
+use log::info;
 pub struct MusicPlayer {
     sink: Sink,
     _stream: OutputStream,
@@ -234,7 +234,7 @@ impl MusicPlayer {
         if let Err(e) = self.sink.try_seek(position) {
             // If the error is `SeekError::NotSupported` just ignore the seek input
             match e {
-                SeekError::NotSupported { underlying_source: _ } => {},
+                SeekError::NotSupported { underlying_source: _ } => { info!("Seek not supported"); },
                 _ => return Err(anyhow::anyhow!("Failed to seek to position: {}", e)),
             }
         }
