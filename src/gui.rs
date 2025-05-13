@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use crate::player::MusicPlayer;
-use crate::utils::{is_audio_file, get_supported_extensions};
+use crate::utils::{ is_audio_file, get_supported_extensions};
+use rand::{ rng, Rng };
 
 struct MusicPlayerApp {
     player: Arc<Mutex<MusicPlayer>>,
@@ -19,6 +20,7 @@ struct MusicPlayerApp {
     song_duration: Option<Duration>,
     seeking: bool,
     seek_position: f32, // 0.0 to 1.0 for slider
+    shuffle_mode: bool,
 }
 
 impl MusicPlayerApp {
@@ -52,6 +54,7 @@ impl MusicPlayerApp {
             song_duration: None,
             seeking: false,
             seek_position: 0.0,
+            shuffle_mode: false,
         }
     }
     
@@ -69,7 +72,24 @@ impl MusicPlayerApp {
     }
     
     fn play_next_song(&mut self) {
-        let next_index = if let Some(current) = self.current_playlist_index {
+        let next_index = if self.shuffle_mode && !self.playlist.is_empty() {
+            // In shuffle mode, randomly select a song that's not the current one
+            if self.playlist.len() > 1 {
+                let mut rng = rng();
+                let mut random_index = self.current_playlist_index.unwrap_or(0);
+                
+                // Keep generating a random index until we get one that's different from current
+                while random_index == self.current_playlist_index.unwrap_or(usize::MAX) {
+                    random_index = rng.random_range(0..self.playlist.len());
+                }
+                
+                Some(random_index)
+            } else {
+                // Only one song in playlist, just play it
+                Some(0)
+            }
+        } else if let Some(current) = self.current_playlist_index {
+            // Normal sequential mode
             if current + 1 < self.playlist.len() {
                 Some(current + 1)
             } else {
@@ -440,6 +460,12 @@ impl eframe::App for MusicPlayerApp {
                         
                         if ui.button("⏭ Next").clicked() {
                             self.play_next_song();
+                        }
+                        
+                        // Add shuffle toggle button
+                        let shuffle_text = if self.shuffle_mode { "🔀 Shuffle: On" } else { "🔀 Shuffle: Off" };
+                        if ui.button(shuffle_text).clicked() {
+                            self.shuffle_mode = !self.shuffle_mode;
                         }
                         
                         // Add volume slider
