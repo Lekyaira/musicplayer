@@ -527,8 +527,8 @@ impl eframe::App for MusicPlayerApp {
     }
 }
 
-pub fn run(paths: Vec<PathBuf>, opened_with_files: bool) -> Result<()> {
-    let mut options = NativeOptions {
+pub fn run(paths: Vec<PathBuf>, _opened_with_files: bool) -> Result<()> {
+    let options = NativeOptions {
         viewport: ViewportBuilder::default()
             .with_inner_size(egui::vec2(500.0, 600.0))
             .with_drag_and_drop(true), // Enable drag-drop file support

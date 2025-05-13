@@ -81,7 +81,7 @@ fn main() -> Result<()> {
     let is_macos_file_open = std::env::args().any(|arg| arg.starts_with("-psn_"));
     
     // Get files from command-line args
-    let mut file_paths = expand_glob_patterns(args.files);
+    let file_paths = expand_glob_patterns(args.files);
     
     // On Windows/Linux, the files are passed directly as arguments
     // On macOS, we need to check for AppleEvents (via eframe's integration)
