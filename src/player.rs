@@ -145,6 +145,7 @@ impl MusicPlayer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_playing(&self) -> bool {
         // A better implementation of is_playing that handles all cases:
         // - Not playing if sink is paused
@@ -168,10 +169,11 @@ impl MusicPlayer {
     // Volume control methods
     pub fn set_volume(&self, volume: f32) {
         // Clamp volume between 0.0 and 1.0
-        let volume = volume.max(0.0).min(1.0);
+        let volume = volume.clamp(0.0, 1.0);
         self.sink.set_volume(volume);
     }
     
+    #[allow(dead_code)]
     pub fn get_volume(&self) -> f32 {
         self.sink.volume()
     }
