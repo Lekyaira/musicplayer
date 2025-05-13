@@ -149,8 +149,22 @@ impl MusicPlayerApp {
                     };
                 }
                 
+                // Remove the track
                 self.playlist.remove(index);
-                self.selected_song_index = None;
+                
+                // Select the next track for better UX
+                if !self.playlist.is_empty() {
+                    if index < self.playlist.len() {
+                        // If there's a next track at same position, select it
+                        self.selected_song_index = Some(index);
+                    } else {
+                        // If we removed the last track, select the new last one
+                        self.selected_song_index = Some(self.playlist.len() - 1);
+                    }
+                } else {
+                    // No tracks left
+                    self.selected_song_index = None;
+                }
             }
         }
     }
