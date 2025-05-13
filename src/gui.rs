@@ -251,7 +251,7 @@ impl MusicPlayerApp {
             
             if let Ok(player) = self.player.lock() {
                 if let Err(e) = player.seek_to(position) {
-                    eprintln!("Error seeking: {}", e);
+                    log::error!("Error seeking: {}", e);
                 }
             }
         }

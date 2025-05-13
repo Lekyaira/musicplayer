@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use log::info;
+
 pub struct MusicPlayer {
     sink: Sink,
     _stream: OutputStream,
@@ -207,6 +207,59 @@ impl MusicPlayer {
         Duration::from_secs(0)
     }
     
+    // Extract the file reload functionality to its own function
+    fn reload_current_file(&self, position: Option<Duration>) -> Result<()> {
+        // Get the current file path
+        let file_path = if let Ok(path) = self.current_file_path.lock() {
+            match &*path {
+                Some(p) => p.clone(),
+                None => return Err(anyhow::anyhow!("No file is currently playing")),
+            }
+        } else {
+            return Err(anyhow::anyhow!("Failed to lock file path mutex"));
+        };
+
+        // If a position is provided, load the file and skip to that position
+        if let Some(position) = position {
+            // Stop the current playback
+            self.sink.stop();
+            
+            // Store the current file path (mostly redundant here but consistent with play_file)
+            if let Ok(mut file_path_lock) = self.current_file_path.lock() {
+                *file_path_lock = Some(file_path.clone());
+            }
+            
+            // Set the position
+            if let Ok(mut play_pos) = self.play_position.lock() {
+                *play_pos = position;
+            }
+            if let Ok(mut last_update) = self.last_position_update.lock() {
+                *last_update = std::time::Instant::now();
+            }
+            
+            // Open the file and create a decoder
+            let file = File::open(&file_path)?;
+            let reader = BufReader::new(file);
+            let source = Decoder::new(reader)?;
+            
+            // Store the song duration if available
+            let duration = source.total_duration();
+            if let Ok(mut song_duration) = self.song_duration.lock() {
+                *song_duration = duration;
+            }
+            
+            // Skip to the desired position and append to sink
+            let skipped_source = source.skip_duration(position);
+            self.sink.append(skipped_source);
+            self.sink.play();
+            
+            return Ok(());
+        }
+
+        // If no position provided, just reload the file normally
+        self.play_file(&file_path)
+    }
+    
     pub fn seek_to(&self, position: Duration) -> Result<()> {
         // Get the current song index
         let _song_index = if let Ok(index) = self.current_song_index.lock() {
@@ -234,8 +287,15 @@ impl MusicPlayer {
         if let Err(e) = self.sink.try_seek(position) {
             // If the error is `SeekError::NotSupported` just ignore the seek input
             match e {
-                SeekError::NotSupported { underlying_source: _ } => { info!("Seek not supported"); },
-                _ => return Err(anyhow::anyhow!("Failed to seek to position: {}", e)),
+                SeekError::NotSupported { underlying_source: _ } => { 
+                    log::info!("Seek not supported, reloading the file instead.");
+                    // We can't seek, so reload the file instead
+                    self.reload_current_file(Some(position))?;
+                },
+                _ => {
+                    log::error!("Failed to seek, reloading the file instead. Error: {e}");
+                    self.reload_current_file(Some(position))?;
+                },
             }
         }
         
