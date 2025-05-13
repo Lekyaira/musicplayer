@@ -257,6 +257,9 @@ impl MusicPlayer {
         }
 
         // If no position provided, just reload the file normally
+        if let Ok(mut play_pos) = self.play_position.lock() {
+            *play_pos = Duration::from_secs(0);
+        }
         self.play_file(&file_path)
     }
     
