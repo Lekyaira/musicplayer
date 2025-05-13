@@ -128,8 +128,23 @@ impl MusicPlayerApp {
                 // Update current playlist index if needed
                 if let Some(current) = self.current_playlist_index {
                     self.current_playlist_index = match current {
-                        c if c == index => Some(c - 1),
-                        c if c == index - 1 => Some(c + 1),
+                        // If removing the current item
+                        c if c == index => {
+                            if c > 0 {
+                                // If not the first item, move to previous
+                                Some(c - 1)
+                            } else if self.playlist.len() > 1 {
+                                // If first item and playlist has more items, stay at 0
+                                // (which will point to the next song after removal)
+                                Some(0)
+                            } else {
+                                // If removing the only item
+                                None
+                            }
+                        },
+                        // If removing an item before current, decrement current index
+                        c if c > index => Some(c - 1),
+                        // Otherwise keep the same index
                         c => Some(c),
                     };
                 }
