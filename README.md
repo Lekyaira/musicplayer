@@ -26,6 +26,33 @@ cargo build --release
 # The binary will be in target/release/musicplayer
 ```
 
+### macOS Deployment
+
+For macOS users, a deployment script is included to create a proper `.app` bundle:
+
+```bash
+# Make the script executable if needed
+chmod +x deploy_macos.sh
+
+# Run the deployment script
+./deploy_macos.sh
+```
+
+This will:
+1. Build the app in release mode
+2. Create a proper macOS `.app` bundle with file associations
+3. Create a `.zip` file or `.dmg` installer (if `create-dmg` is installed)
+
+To install:
+- Copy `MusicPlayer.app` to your Applications folder
+- You can then launch the app from Spotlight or Launchpad
+
+To create a DMG installer (optional):
+```bash
+brew install create-dmg
+./deploy_macos.sh
+```
+
 ### Setting Up File Associations
 
 #### Linux
@@ -46,31 +73,6 @@ sudo update-desktop-database
 
 1. Double-click the `musicplayer_register.reg` file to register file associations.
 2. Accept the security prompt.
-
-#### macOS
-
-1. Build the application bundle:
-
-```bash
-# Create app bundle structure
-mkdir -p MusicPlayer.app/Contents/MacOS
-mkdir -p MusicPlayer.app/Contents/Resources
-
-# Copy executable to the bundle
-cp target/release/musicplayer MusicPlayer.app/Contents/MacOS/
-
-# Copy Info.plist
-cp Info.plist.template MusicPlayer.app/Contents/Info.plist
-
-# Create an icon file (optional)
-# cp AppIcon.icns MusicPlayer.app/Contents/Resources/
-```
-
-2. To register the app with the system:
-   - Move the app to the Applications folder
-   - Right-click on an audio file
-   - Select "Open With" → "Other..."
-   - Navigate to your app and check "Always Open With"
 
 ## Usage
 

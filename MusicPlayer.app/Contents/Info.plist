@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Music Player</string>
+    <key>CFBundleDisplayName</key>
+    <string>Music Player</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.musicplayer.app</string>
+    <key>CFBundleVersion</key>
+    <string>0.1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleExecutable</key>
+    <string>musicplayer</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Audio Files</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.mp3</string>
+                <string>public.audio</string>
+                <string>public.wav</string>
+                <string>public.ogg-audio</string>
+                <string>public.flac-audio</string>
+                <string>public.aac-audio</string>
+                <string>public.m4a-audio</string>
+                <string>com.microsoft.wma-audio</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>This app needs access to run AppleScript to handle file events</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025</string>
+</dict>
+</plist>
