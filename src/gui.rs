@@ -376,6 +376,7 @@ impl eframe::App for MusicPlayerApp {
                             self.seek_to_position(seek_pos);
                         } else if slider_response.dragged() {
                             self.seek_position = seek_pos;
+                            self.seek_to_position(seek_pos);
                         }
                         
                         // Total duration display

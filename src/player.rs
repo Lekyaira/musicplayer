@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rodio::{Decoder, OutputStream, Sink, Source};
+use rodio::{Decoder, OutputStream, Sink, Source, source::SeekError};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -208,16 +208,6 @@ impl MusicPlayer {
     }
     
     pub fn seek_to(&self, position: Duration) -> Result<()> {
-        // Get the current file path
-        let file_path = if let Ok(path) = self.current_file_path.lock() {
-            match &*path {
-                Some(p) => p.clone(),
-                None => return Err(anyhow::anyhow!("No file is currently playing")),
-            }
-        } else {
-            return Err(anyhow::anyhow!("Failed to lock file path mutex"));
-        };
-        
         // Get the current song index
         let _song_index = if let Ok(index) = self.current_song_index.lock() {
             match *index {
@@ -239,23 +229,14 @@ impl MusicPlayer {
         if let Ok(mut last_update) = self.last_position_update.lock() {
             *last_update = std::time::Instant::now();
         }
-        
-        // We need to restart playback from the new position
-        // Unfortunately, rodio doesn't support direct seeking, so we need to reload the file
-        // and skip to the desired position
-        let was_paused = self.sink.is_paused();
-        
-        self.sink.stop();
-        
-        let file = File::open(&file_path)?;
-        let reader = BufReader::new(file);
-        let source = Decoder::new(reader)?
-            .skip_duration(position);
-        
-        self.sink.append(source);
-        
-        if !was_paused {
-            self.sink.play();
+
+        // Try to seek to the new position
+        if let Err(e) = self.sink.try_seek(position) {
+            // If the error is `SeekError::NotSupported` just ignore the seek input
+            match e {
+                SeekError::NotSupported { underlying_source: _ } => {},
+                _ => return Err(anyhow::anyhow!("Failed to seek to position: {}", e)),
+            }
         }
         
         Ok(())
